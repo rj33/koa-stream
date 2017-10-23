@@ -115,7 +115,7 @@ const handleBuffer = function (ctx, buffer, contentType, options) {
   }
 
   let bufferSlice = buffer.slice(range.start, range.end);
-  streamRange(ctx, bufferSlice, range, contentType);
+  streamRange(ctx, bufferSlice, range, contentType, options.maxage);
 };
 
 const decode = function (filepath) {

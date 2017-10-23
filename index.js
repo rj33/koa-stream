@@ -36,33 +36,35 @@ const endRequest = function (ctx, size) {
   ctx.status = 416;
 };
 
-const sendFile = function (ctx, filepath, size) {
+const sendFile = function (ctx, filepath, size, maxage) {
   ctx.set('Content-Type', mime.lookup(filepath));
   ctx.set('Content-Length', size);
   ctx.set('Accept-Ranges', 'bytes');
+  ctx.set('Cache-Control', maxage ? 'max-age='+maxage : 'no-cache');
   ctx.body = fs.createReadStream(filepath);
 };
 
-const sendBufferAtOnce = function (ctx, buffer, type) {
+const sendBufferAtOnce = function (ctx, buffer, type, maxage) {
   ctx.set('Content-Type', type);
   ctx.set('Content-Length', buffer.length);
+  ctx.set('Cache-Control', maxage ? 'max-age='+maxage : 'no-cache');
   ctx.body = buffer;
 };
 
-const streamRange = function (ctx, body, range, contentType) {
+const streamRange = function (ctx, body, range, contentType, maxage) {
   ctx.set('Content-Range', 'bytes ' + range.start + '-' + range.end + '/' + range.totalLength);
   ctx.set('Content-Length', range.end - range.start + 1);
   ctx.set('Content-Type', contentType);
   ctx.set('Accept-Ranges', 'bytes');
-  ctx.set('Cache-Control', 'no-cache');
+  ctx.set('Cache-Control', maxage ? 'max-age='+maxage : 'no-cache');
   ctx.status = 206;
   ctx.body = body;
 };
 
-const handleFileStream = function (ctx, range, filepath) {
+const handleFileStream = function (ctx, range, filepath, maxage) {
   let stream = fs.createReadStream(filepath, {start: range.start, end: range.end});
   let contentType = mime.lookup(filepath);
-  streamRange(ctx, stream, range, contentType);
+  streamRange(ctx, stream, range, contentType, maxage);
 };
 
 const getFileStat = function *(filepath) {
@@ -91,21 +93,21 @@ const handleRequest = function *(ctx, filepath, options) {
   let range = parseRange(ctx.headers.range, stat.size);
 
   if (range === null) {
-    return options.allowDownload ? sendFile(ctx, filepath, stat.size) : null;
+    return options.allowDownload ? sendFile(ctx, filepath, stat.size, options.maxage) : null;
   }
 
   if (range.start >= stat.size || range.end >= stat.size) {
     return endRequest(ctx, stat.size);
   }
 
-  handleFileStream(ctx, range, filepath, stat);
+  handleFileStream(ctx, range, filepath, stat, options.maxage);
 };
 
 const handleBuffer = function (ctx, buffer, contentType, options) {
   let range = parseRange(ctx.headers.range, buffer.length);
 
   if (range === null) {
-    return options.allowDownload ? sendBufferAtOnce(ctx, buffer, contentType) : null;
+    return options.allowDownload ? sendBufferAtOnce(ctx, buffer, contentType, options.maxage) : null;
   }
 
   if (range.start >= buffer.length || range.end >= buffer.length) {

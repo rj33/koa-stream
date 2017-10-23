@@ -61,7 +61,7 @@ const streamRange = function (ctx, body, range, contentType, maxage) {
   ctx.body = body;
 };
 
-const handleFileStream = function (ctx, range, filepath, maxage) {
+const handleFileStream = function (ctx, range, filepath, stat, maxage) {
   let stream = fs.createReadStream(filepath, {start: range.start, end: range.end});
   let contentType = mime.lookup(filepath);
   streamRange(ctx, stream, range, contentType, maxage);
